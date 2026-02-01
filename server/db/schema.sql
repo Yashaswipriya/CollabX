@@ -25,3 +25,13 @@ CREATE TABLE workspace_members (
   UNIQUE (user_id, workspace_id)
 );
 
+--blocks table schema--
+CREATE TABLE blocks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  content JSONB NOT NULL DEFAULT '{}'::jsonb,
+  position INT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
