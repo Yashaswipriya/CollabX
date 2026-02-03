@@ -30,7 +30,7 @@ export default function Home() {
     };
     socket.onmessage = (event) =>{
       try {
-        const data: WSEvent = JSON.parse(event.data);
+        const data: WSevent = JSON.parse(event.data);
         //Listen for BLOCK_UPDATED
         if (data.type === "BLOCK_UPDATED") {
           console.log("Block updated from WS:", data.block);
