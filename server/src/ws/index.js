@@ -1,5 +1,4 @@
 const WebSocket = require('ws');
-
 function initWebSocket(server){
 const wss = new WebSocket.Server({ server });
 console.log('WebSocket server initialized');
@@ -10,7 +9,7 @@ function broadcastToRoom(roomId,data,sender){
     const clients = rooms.get(roomId);
     if(!clients) return;
     clients.forEach((client) =>{
-        if(client.readyState == WebSocket.OPEN && client != sender){
+        if(client.readyState === WebSocket.OPEN && client != sender){
             client.send(data);
         }
     })
@@ -18,25 +17,27 @@ function broadcastToRoom(roomId,data,sender){
 
 wss.on('connection',(ws) =>{
     console.log('New client connected');
-
-    ws.send('Welcome new client!');
     ws.roomId = null;
     ws.on('message', (message) =>{
-        console.log(`Received message: ${message}`);
-        const data = JSON.parse(message);
-        if(data.type == "join"){
+        let data;
+        try {
+            data = JSON.parse(message);
+        } catch (err) {
+            console.error("Invalid JSON received");
+            return;
+        }
+        if(data.type === "JOIN_ROOM"){
             const roomId = data.roomId;
             if(!rooms.has(roomId)){
                 rooms.set(roomId, new Set());
             }
         rooms.get(roomId).add(ws);
         ws.roomId = roomId;
-        ws.send(`Joined room: ${roomId}`);
         return;
         }
-        if(data.type == "message"){
+        if(data.type === "BLOCK_UPDATED"){
             if(!ws.roomId) return;
-            broadcastToRoom(ws.roomId, data.message, ws);
+            broadcastToRoom(ws.roomId,JSON.stringify({type:"BLOCK_UPDATED",block:data.block,}), ws);
         }
     });
     ws.on('close', ()=>{
