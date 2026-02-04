@@ -6,12 +6,14 @@ type Block = {
   type: string;
   content: string;
   position: number;
+  version: number;
 };
 
 type WSevent = |{type: "BLOCK_UPDATED", block: Block} | {type: "JOIN_ROOM", roomId: string};
 
 export default function Home() {
   const [events, setEvents] = useState<WSevent[]>([]);
+  const [block,setBlock] = useState<Block | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
 
   const workspaceId = "test-workspace-1";
@@ -35,6 +37,7 @@ export default function Home() {
         if (data.type === "BLOCK_UPDATED") {
           console.log("Block updated from WS:", data.block);
           setEvents((prev) => [...prev, data]);
+          setBlock(data.block);
         }
       } catch (err) {
         console.error("Invalid WS message", event.data);
@@ -61,6 +64,7 @@ export default function Home() {
       type: "text",
       content: "Updated from client " + new Date().toLocaleTimeString(),
       position: 0,
+      version: (block?.version ?? 1),
     };
 
     socketRef.current.send(

@@ -24,19 +24,22 @@ router.post("/block", authMiddleware, async (req,res) =>{
 router.put("/block/:id", authMiddleware, async (req,res) =>{
     try{
         const {id} = req.params;
-        const {type, content, position} = req.body;
+        const {type, content, position, version} = req.body;
         const blockRes = await pool.query("SELECT * FROM blocks WHERE id = $1", [id]);
         if(blockRes.rows.length === 0){
             return res.status(404).json({message: "Block not found"});
         }
         const block = blockRes.rows[0];
+        if(block.version !== version){
+            return res.status(409).json({message: "Block has been modified by somebody else."});
+        }
         if(type === undefined || type === ""){
             return res.status(400).json({message: "Type is required"});
         }
         if (position !== undefined && position < 0) {
             return res.status(400).json({ message: "Invalid position" });
         }
-        const updatedBlock = await pool.query("UPDATE blocks SET type = $1, content = $2, position = $3 WHERE id = $4 RETURNING *", [type ?? block.type, content ?? block.content, position ?? block.position, id]);
+        const updatedBlock = await pool.query("UPDATE blocks SET type = $1, content = $2, position = $3, version = version+1 WHERE id = $4 RETURNING *", [type ?? block.type, content ?? block.content, position ?? block.position, id]);
         res.json(updatedBlock.rows[0]);
     }
     //Mistake: Violation of UNIQUE constraint on position within the same workspace is not handled.
