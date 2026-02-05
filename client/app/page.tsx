@@ -9,14 +9,17 @@ type Block = {
   version: number;
 };
 
-type WSevent = |{type: "BLOCK_UPDATED", block: Block} | {type: "JOIN_ROOM", roomId: string};
+type WSevent = |{type: "BLOCK_UPDATED", block: Block} | {type: "USER_JOINED", userId: string} | {type: "USER_LEFT", userId: string};
 
 export default function Home() {
   const [events, setEvents] = useState<WSevent[]>([]);
   const [block,setBlock] = useState<Block | null>(null);
+  const [onlineUsers,setOnlineUsers] = useState<string[]>([]);
+
   const socketRef = useRef<WebSocket | null>(null);
 
   const workspaceId = "test-workspace-1";
+  const userId = "user-" + Math.floor(Math.random() * 1000);
 
   useEffect(() => {
     // Establish WebSocket connection
@@ -27,6 +30,7 @@ export default function Home() {
         JSON.stringify({
           type: "JOIN_ROOM",
           roomId: workspaceId,
+          userId,
         })
     );
     };
@@ -38,6 +42,18 @@ export default function Home() {
           console.log("Block updated from WS:", data.block);
           setEvents((prev) => [...prev, data]);
           setBlock(data.block);
+        }
+        if (data.type === "USER_JOINED") {
+          setOnlineUsers((prev) =>
+            prev.includes(data.userId)
+              ? prev
+              : [...prev, data.userId]
+          );
+        }
+        if (data.type === "USER_LEFT") {
+          setOnlineUsers((prev) =>
+            prev.filter((id) => id !== data.userId)
+          );
         }
       } catch (err) {
         console.error("Invalid WS message", event.data);
@@ -79,6 +95,11 @@ export default function Home() {
 return (
   <div style={{ padding: 24 }}>
       <h2>CollabX Realtime Test</h2>
+
+      <p>
+        <strong>Online users:</strong>{""}
+        {onlineUsers.length === 0 ? "none" : onlineUsers.join(", ")}
+      </p>
 
       <button onClick={emitBlockUpdate}>
         Emit BLOCK_UPDATED

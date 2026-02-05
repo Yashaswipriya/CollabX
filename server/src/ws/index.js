@@ -4,6 +4,7 @@ const wss = new WebSocket.Server({ server });
 console.log('WebSocket server initialized');
 
 const rooms = new Map();
+const presence = new Map();
 
 function broadcastToRoom(roomId,data,sender){
     const clients = rooms.get(roomId);
@@ -18,6 +19,7 @@ function broadcastToRoom(roomId,data,sender){
 wss.on('connection',(ws) =>{
     console.log('New client connected');
     ws.roomId = null;
+    ws.userId = null;
     ws.on('message', (message) =>{
         let data;
         try {
@@ -27,12 +29,18 @@ wss.on('connection',(ws) =>{
             return;
         }
         if(data.type === "JOIN_ROOM"){
-            const roomId = data.roomId;
+            const {roomId,userId} = data;
             if(!rooms.has(roomId)){
                 rooms.set(roomId, new Set());
             }
+            if(!presence.has(roomId)){
+                presence.set(roomId, new Set());
+            }
         rooms.get(roomId).add(ws);
+        presence.get(roomId).add(userId);
         ws.roomId = roomId;
+        ws.userId = userId;
+        broadcastToRoom(roomId,JSON.stringify({type:"USER_JOINED",userId}), ws);
         return;
         }
         if(data.type === "BLOCK_UPDATED"){
@@ -42,7 +50,7 @@ wss.on('connection',(ws) =>{
     });
     ws.on('close', ()=>{
     console.log('Client disconnected');
-    const roomId = ws.roomId;
+    const {roomId,userId} = ws;
     if(!roomId) return;
     const clients = rooms.get(roomId);
     if(!clients) return;
@@ -50,8 +58,16 @@ wss.on('connection',(ws) =>{
     if(clients.size === 0){
         rooms.delete(roomId);
     }
+    const onlineUsers = presence.get(roomId);
+    if(onlineUsers && userId && onlineUsers.has(userId)){
+        onlineUsers.delete(userId);
+    }
+    broadcastToRoom(roomId,JSON.stringify({type:"USER_LEFT",userId}), ws);
+    if(onlineUsers.size === 0){
+        presence.delete(roomId);
+    }
     });
-})
+});
 }
 module.exports = initWebSocket;
 
