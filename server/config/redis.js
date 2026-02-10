@@ -1,24 +1,30 @@
-let redisClient;
+let pub;
+let sub;
 
 async function initRedis() {
-  if (redisClient) return redisClient;
+  if (pub && sub) return { pub, sub };
 
-  const { createClient } = await import("redis");
+  const { createClient } = await import('redis');
 
-  redisClient = createClient({
-    url: "redis://localhost:6379",
+  pub = createClient({ url: 'redis://localhost:6379' });
+  sub = createClient({ url: 'redis://localhost:6379' });
+
+  pub.on('connect', () => {
+    console.log('Redis publisher connected');
   });
 
-  redisClient.on("connect", () => {
-    console.log("Redis client connected");
+  sub.on('connect', () => {
+    console.log('Redis subscriber connected');
   });
 
-  redisClient.on("error", (err) => {
-    console.error("Redis error", err);
-  });
+  pub.on('error', console.error);
+  sub.on('error', console.error);
 
-  await redisClient.connect();
-  return redisClient;
+  await pub.connect();
+  await sub.connect();
+
+  return { pub, sub };
 }
 
 module.exports = initRedis;
+

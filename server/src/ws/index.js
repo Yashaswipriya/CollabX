@@ -1,20 +1,26 @@
 const WebSocket = require('ws');
-function initWebSocket(server){
+const initRedis = require('../../config/redis');
+let pub, sub;
+let redisListenerAttached = false;
+async function initWebSocket(server) {
+  const redis = await initRedis();
+  pub = redis.pub;
+  sub = redis.sub;
 const wss = new WebSocket.Server({ server });
 console.log('WebSocket server initialized');
 
-const rooms = new Map();
-const presence = new Map();
+const rooms = new Map();// roomId -> Set of clients(local server only)
+const presence = new Map();// roomId -> Set of userIds (local presence only)
 
-function broadcastToRoom(roomId,data,sender){
-    const clients = rooms.get(roomId);
-    if(!clients) return;
-    clients.forEach((client) =>{
-        if(client.readyState === WebSocket.OPEN && client != sender){
-            client.send(data);
-        }
-    })
-}
+// function broadcastToRoom(roomId,data,sender){
+//     const clients = rooms.get(roomId);
+//     if(!clients) return;
+//     clients.forEach((client) =>{
+//         if(client.readyState === WebSocket.OPEN && client != sender){
+//             client.send(data);
+//         }
+//     })
+// }
 
 wss.on('connection',(ws) =>{
     console.log('New client connected');
@@ -30,8 +36,24 @@ wss.on('connection',(ws) =>{
         }
         if(data.type === "JOIN_ROOM"){
             const {roomId,userId} = data;
+            console.log(` User ${userId} joined room ${roomId} on this server`);
             if(!rooms.has(roomId)){
                 rooms.set(roomId, new Set());
+                sub.subscribe(`room:${roomId}`, (message) => {
+                const data = JSON.parse(message);
+
+                const clients = rooms.get(roomId);
+                if (!clients) return;
+
+                clients.forEach((client) => {
+                    if (
+                    client.readyState === WebSocket.OPEN &&
+                    client.userId !== data.senderId
+                    ) {
+                    client.send(JSON.stringify(data));
+                    }
+                });
+                });
             }
             if(!presence.has(roomId)){
                 presence.set(roomId, new Set());
@@ -40,12 +62,12 @@ wss.on('connection',(ws) =>{
         presence.get(roomId).add(userId);
         ws.roomId = roomId;
         ws.userId = userId;
-        broadcastToRoom(roomId,JSON.stringify({type:"USER_JOINED",userId}), ws);
+        pub.publish(`room:${roomId}`, JSON.stringify({type:"USER_JOINED",userId,senderId:userId}));
         return;
         }
         if(data.type === "BLOCK_UPDATED"){
             if(!ws.roomId) return;
-            broadcastToRoom(ws.roomId,JSON.stringify({type:"BLOCK_UPDATED",block:data.block,}), ws);
+            pub.publish(`room:${ws.roomId}`, JSON.stringify({type:"BLOCK_UPDATED",block:data.block,senderId:ws.userId}));
         }
     });
     ws.on('close', ()=>{
@@ -57,12 +79,13 @@ wss.on('connection',(ws) =>{
     clients.delete(ws);
     if(clients.size === 0){
         rooms.delete(roomId);
+        sub.unsubscribe(`room:${roomId}`);
     }
     const onlineUsers = presence.get(roomId);
     if(onlineUsers && userId && onlineUsers.has(userId)){
         onlineUsers.delete(userId);
     }
-    broadcastToRoom(roomId,JSON.stringify({type:"USER_LEFT",userId}), ws);
+    pub.publish(`room:${roomId}`, JSON.stringify({type:"USER_LEFT",userId,senderId:userId}));
     if(onlineUsers.size === 0){
         presence.delete(roomId);
     }
