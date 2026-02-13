@@ -1,26 +1,30 @@
 const WebSocket = require('ws');
 const initRedis = require('../../config/redis');
+const { randomUUID } = require('crypto');
 let pub, sub;
-let redisListenerAttached = false;
+
+const SERVER_ID = randomUUID();
+
 async function initWebSocket(server) {
   const redis = await initRedis();
   pub = redis.pub;
   sub = redis.sub;
 const wss = new WebSocket.Server({ server });
 console.log('WebSocket server initialized');
+console.log(`Server ID: ${SERVER_ID}`);
 
 const rooms = new Map();// roomId -> Set of clients(local server only)
 const presence = new Map();// roomId -> Set of userIds (local presence only)
 
-// function broadcastToRoom(roomId,data,sender){
-//     const clients = rooms.get(roomId);
-//     if(!clients) return;
-//     clients.forEach((client) =>{
-//         if(client.readyState === WebSocket.OPEN && client != sender){
-//             client.send(data);
-//         }
-//     })
-// }
+function broadcastToRoom(roomId,data,sender){
+    const clients = rooms.get(roomId);
+    if(!clients) return;
+    clients.forEach((client) =>{
+        if(client.readyState === WebSocket.OPEN && client !== sender){
+            client.send(JSON.stringify(data));
+        }
+    })
+}
 
 wss.on('connection',(ws) =>{
     console.log('New client connected');
@@ -41,6 +45,8 @@ wss.on('connection',(ws) =>{
                 rooms.set(roomId, new Set());
                 sub.subscribe(`room:${roomId}`, (message) => {
                 const data = JSON.parse(message);
+                //ignore messages from self
+                if(data.originServerId === SERVER_ID) return;
 
                 const clients = rooms.get(roomId);
                 if (!clients) return;
@@ -62,12 +68,22 @@ wss.on('connection',(ws) =>{
         presence.get(roomId).add(userId);
         ws.roomId = roomId;
         ws.userId = userId;
-        pub.publish(`room:${roomId}`, JSON.stringify({type:"USER_JOINED",userId,senderId:userId}));
+        const payload = {type:"USER_JOINED",userId,senderId:userId,originServerId:SERVER_ID};
+        broadcastToRoom(roomId, payload, ws);
+        pub.publish(`room:${roomId}`, JSON.stringify(payload));
         return;
         }
         if(data.type === "BLOCK_UPDATED"){
             if(!ws.roomId) return;
-            pub.publish(`room:${ws.roomId}`, JSON.stringify({type:"BLOCK_UPDATED",block:data.block,senderId:ws.userId}));
+            const payload = {type:"BLOCK_UPDATED",block:data.block,senderId:ws.userId,originServerId:SERVER_ID};
+            broadcastToRoom(ws.roomId, payload, ws);
+            pub.publish(`room:${ws.roomId}`, JSON.stringify(payload));
+        }
+        if(data.type === "CURSOR_MOVE"){
+        if(!ws.roomId) return;
+        const payload = {type:"CURSOR_MOVE",x:data.x,y:data.y,senderId:ws.userId,originServerId:SERVER_ID};
+        broadcastToRoom(ws.roomId, payload, ws);
+        pub.publish(`room:${ws.roomId}`, JSON.stringify(payload));
         }
     });
     ws.on('close', ()=>{
@@ -85,12 +101,13 @@ wss.on('connection',(ws) =>{
     if(onlineUsers && userId && onlineUsers.has(userId)){
         onlineUsers.delete(userId);
     }
-    pub.publish(`room:${roomId}`, JSON.stringify({type:"USER_LEFT",userId,senderId:userId}));
-    if(onlineUsers.size === 0){
+    const payload = {type:"USER_LEFT",userId,senderId:userId,originServerId:SERVER_ID};
+    broadcastToRoom(roomId, payload, ws);
+    pub.publish(`room:${roomId}`, JSON.stringify(payload));
+    if(onlineUsers && onlineUsers.size === 0){
         presence.delete(roomId);
     }
     });
 });
 }
 module.exports = initWebSocket;
-
