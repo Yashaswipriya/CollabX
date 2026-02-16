@@ -56,8 +56,17 @@ router.put("/block/:id", authMiddleware, async (req,res) =>{
 router.get("/block/:workspace_id", authMiddleware, async (req,res) =>{
     try{
         const {workspace_id} = req.params;
+        const userId = req.user.id;
         if (!workspace_id) {
         return res.status(400).json({ message: "Workspace ID is required" });
+        }
+        const membership = await pool.query(
+            "SELECT * FROM workspace_members WHERE workspace_id = $1 AND user_id = $2",
+            [workspace_id, userId]
+        );
+
+        if (membership.rows.length === 0) {
+            return res.status(403).json({ message: "Access denied to this workspace" });
         }
         const blocks = await pool.query("SELECT * FROM blocks WHERE workspace_id = $1 ORDER BY position ASC", [workspace_id]);
         res.json(blocks.rows);

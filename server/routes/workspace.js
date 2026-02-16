@@ -1,7 +1,5 @@
 const express = require('express');
-const bcrypt = require('bcryptjs');
 const pool = require('../db');
-const jwt = require("jsonwebtoken");
 const authMiddleware = require('../middleware/auth');
 const router = express.Router();
 
@@ -18,8 +16,6 @@ router.post("/workspace", authMiddleware, async (req,res) =>{
         }
 
         const newWorkspace = await pool.query("INSERT INTO workspaces (name,owner_id) VALUES ($1,$2) RETURNING id,name",[name.trim(),owner_id]);
-        res.status(201).json({ "New Workspace Created": newWorkspace.rows[0] });
-
         const workspaceId = newWorkspace.rows[0].id;
         await pool.query("INSERT INTO workspace_members (workspace_id,user_id,role) VALUES ($1,$2,$3)",[workspaceId,owner_id,'owner']);
         return res.status(201).json({message:"Workspace created successfully", workspace_id: workspaceId, name: newWorkspace.rows[0].name});
@@ -29,4 +25,62 @@ router.post("/workspace", authMiddleware, async (req,res) =>{
         res.status(500).json({message:"Server error"});
     }
 });
+
+router.get("/workspaces", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const result = await pool.query(
+      `
+      SELECT w.id, w.name
+      FROM workspaces w
+      JOIN workspace_members wm
+        ON w.id = wm.workspace_id
+      WHERE wm.user_id = $1
+      ORDER BY w.id DESC
+      `,
+      [userId]
+    );
+
+    return res.json(result.rows);
+
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.get("/workspace/:id", authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Check membership
+    const membership = await pool.query(
+      "SELECT * FROM workspace_members WHERE workspace_id = $1 AND user_id = $2",
+      [id, userId]
+    );
+
+    if (membership.rows.length === 0) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const workspace = await pool.query(
+      "SELECT id, name FROM workspaces WHERE id = $1",
+      [id]
+    );
+
+    if (workspace.rows.length === 0) {
+      return res.status(404).json({ message: "Workspace not found" });
+    }
+
+    return res.json(workspace.rows[0]);
+
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
 module.exports = router;
