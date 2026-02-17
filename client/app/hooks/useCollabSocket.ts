@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Block } from "../types/block";
-import { UNSTABLE_REVALIDATE_RENAME_ERROR } from "next/dist/lib/constants";
 
 export type WSEvent =
   | { type: "BLOCK_UPDATED"; block: Block }

@@ -6,6 +6,7 @@ const http = require('http');
 const authRoutes = require('./routes/auth');
 const workspaceRoutes = require('./routes/workspace');
 const blockRoutes = require('./routes/block');
+const inviteRoutes = require('./routes/invite');
 const authMiddleware = require('./middleware/auth');
 
 app.use(express.json());
@@ -19,6 +20,7 @@ app.get("/", (req,res) =>{
 app.use("/api/auth", authRoutes);
 app.use("/api/workspace", workspaceRoutes);
 app.use("/api", blockRoutes);
+app.use("/api/invite", inviteRoutes);
 app.get("/api/protected", authMiddleware, (req,res) =>{
     res.json({message: "Access granted!", userId: req.user.id});
 });

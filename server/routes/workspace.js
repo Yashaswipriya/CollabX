@@ -1,8 +1,10 @@
 const express = require('express');
 const pool = require('../db');
 const authMiddleware = require('../middleware/auth');
+const { createInvite } = require("../controllers/workspaceController");
 const router = express.Router();
 
+router.post("/:workspaceId/invite", authMiddleware, createInvite);
 router.post("/workspace", authMiddleware, async (req,res) =>{
     try{
         const {name} = req.body;

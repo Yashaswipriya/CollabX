@@ -45,7 +45,12 @@ export default function Home() {
       console.log("Stored username:", localStorage.getItem("username"))
       setIsLoginOpen(false)
       toast.success("Logged in successfully!")
-      router.push("/dashboard")
+      const redirect = new URLSearchParams(window.location.search).get("redirect");
+      if (redirect) {
+        router.push(redirect);
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       toast.error(err.message)
     }

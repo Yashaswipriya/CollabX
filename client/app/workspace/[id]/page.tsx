@@ -3,9 +3,9 @@
 import { useEffect, useState, useRef } from "react"
 import { useRouter, useParams } from "next/navigation"
 import BlockRenderer from "../../components/BlockRenderer"
+import WorkspaceHeader from "../../components/WorkspaceHeader"
 import { useCollabSocket } from "../../hooks/useCollabSocket"
 import { Block } from "../../types/block"
-import OnlineUsers from "../../components/OnlineUsers"
 
 export default function WorkspacePage() {
   const router = useRouter()
@@ -13,24 +13,21 @@ export default function WorkspacePage() {
   const workspaceId = params.id as string
 
   const [workspaceName, setWorkspaceName] = useState("")
-  const [editingName, setEditingName] = useState(false)
   const [blocks, setBlocks] = useState<Block[]>([])
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState<string | null>(null)
 
+  const [userId] = useState(() =>
+    typeof window !== "undefined"
+      ? localStorage.getItem("userId") || crypto.randomUUID()
+      : ""
+  )
 
-  const nameInputRef = useRef<HTMLInputElement>(null)
+  // WebSocket hook
+  const { events, onlineUsers, cursors, sendCursorMove } =
+    useCollabSocket(workspaceId, userId)
 
- const [userId] = useState(() =>
-  typeof window !== "undefined"
-    ? localStorage.getItem("userId") || crypto.randomUUID()
-    : ""
-);
-
-  //WebSocket hook
-  const { events, onlineUsers, cursors, sendCursorMove } = useCollabSocket(workspaceId, userId)
-
-  //React to WebSocket events
+  // React to WebSocket events
   useEffect(() => {
     if (!events.length) return
 
@@ -51,6 +48,7 @@ export default function WorkspacePage() {
     if (lastEvent.type === "BLOCK_DELETED") {
       setBlocks(prev => prev.filter(b => b.id !== lastEvent.blockId))
     }
+
     if (lastEvent.type === "USER_JOINED") {
       setToast(`${lastEvent.name} joined`)
     }
@@ -58,14 +56,18 @@ export default function WorkspacePage() {
     if (lastEvent.type === "USER_LEFT") {
       setToast(`${lastEvent.name} left`)
     }
-    if (lastEvent.type === "USER_JOINED" || lastEvent.type === "USER_LEFT") {
+
+    if (
+      lastEvent.type === "USER_JOINED" ||
+      lastEvent.type === "USER_LEFT"
+    ) {
       setTimeout(() => {
         setToast(null)
       }, 3000)
     }
   }, [events])
 
-  //Initial data load
+  // Initial data load
   useEffect(() => {
     const token = localStorage.getItem("token")
     if (!token) {
@@ -95,7 +97,6 @@ export default function WorkspacePage() {
 
         const blockData = await blockRes.json()
 
-        // Ensure content is object
         const normalizedBlocks: Block[] = Array.isArray(blockData)
           ? blockData.map((b: any) => ({
               ...b,
@@ -117,21 +118,16 @@ export default function WorkspacePage() {
     init()
   }, [workspaceId, router])
 
+  // Cursor tracking
   useEffect(() => {
-    if (editingName && nameInputRef.current) {
-      nameInputRef.current.focus()
-      nameInputRef.current.select()
+    function handleMove(e: MouseEvent) {
+      sendCursorMove(e.clientX, e.clientY)
     }
-  }, [editingName]);
 
-  useEffect(() => {
-  function handleMove(e: MouseEvent) {
-    sendCursorMove(e.clientX, e.clientY)
-  }
-
-  window.addEventListener("mousemove", handleMove)
-  return () => window.removeEventListener("mousemove", handleMove)
-}, [sendCursorMove]);
+    window.addEventListener("mousemove", handleMove)
+    return () =>
+      window.removeEventListener("mousemove", handleMove)
+  }, [sendCursorMove])
 
   async function addBlock() {
     const token = localStorage.getItem("token")
@@ -247,30 +243,13 @@ export default function WorkspacePage() {
           ← Dashboard
         </button>
 
-        <div className="flex justify-between items-center">
-          {editingName ? (
-            <input
-              ref={nameInputRef}
-              value={workspaceName}
-              onChange={(e) => setWorkspaceName(e.target.value)}
-              className="text-4xl font-semibold bg-transparent border-b border-purple-300 focus:outline-none"
-            />
-          ) : (
-            <h1
-              onClick={() => setEditingName(true)}
-              className="text-4xl font-semibold text-gray-900 cursor-pointer hover:text-purple-700 transition"
-            >
-              {workspaceName}
-            </h1>
-          )}
-           <OnlineUsers users={onlineUsers} />
-          <button
-            onClick={addBlock}
-            className="rounded-full px-4 py-1.5 text-sm bg-purple-100 text-purple-700 hover:bg-purple-200 transition"
-          >
-            + Add Block
-          </button>
-        </div>
+        <WorkspaceHeader
+          workspaceName={workspaceName}
+          setWorkspaceName={setWorkspaceName}
+          onlineUsers={onlineUsers}
+          onAddBlock={addBlock}
+          workspaceId={workspaceId}
+        />
 
         <div className="space-y-6">
           {blocks.map(block => (
@@ -282,6 +261,7 @@ export default function WorkspacePage() {
             />
           ))}
         </div>
+
         {Object.entries(cursors).map(([id, pos]) => (
           <div
             key={id}
@@ -295,6 +275,7 @@ export default function WorkspacePage() {
             }}
           />
         ))}
+
         {toast && (
           <div className="fixed bottom-6 right-6 bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-lg animate-fade-in">
             {toast}
