@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation"
 import BlockRenderer from "../../components/BlockRenderer"
 import { useCollabSocket } from "../../hooks/useCollabSocket"
 import { Block } from "../../types/block"
+import OnlineUsers from "../../components/OnlineUsers"
 
 export default function WorkspacePage() {
   const router = useRouter()
@@ -15,6 +16,8 @@ export default function WorkspacePage() {
   const [editingName, setEditingName] = useState(false)
   const [blocks, setBlocks] = useState<Block[]>([])
   const [loading, setLoading] = useState(true)
+  const [toast, setToast] = useState<string | null>(null)
+
 
   const nameInputRef = useRef<HTMLInputElement>(null)
 
@@ -25,7 +28,7 @@ export default function WorkspacePage() {
 );
 
   //WebSocket hook
-  const { events } = useCollabSocket(workspaceId, userId)
+  const { events, onlineUsers, cursors, sendCursorMove } = useCollabSocket(workspaceId, userId)
 
   //React to WebSocket events
   useEffect(() => {
@@ -48,9 +51,21 @@ export default function WorkspacePage() {
     if (lastEvent.type === "BLOCK_DELETED") {
       setBlocks(prev => prev.filter(b => b.id !== lastEvent.blockId))
     }
+    if (lastEvent.type === "USER_JOINED") {
+      setToast(`${lastEvent.userId} joined`)
+    }
+
+    if (lastEvent.type === "USER_LEFT") {
+      setToast(`${lastEvent.userId} left`)
+    }
+    if (lastEvent.type === "USER_JOINED" || lastEvent.type === "USER_LEFT") {
+      setTimeout(() => {
+        setToast(null)
+      }, 3000)
+    }
   }, [events])
 
-  // 🔥 Initial data load
+  //Initial data load
   useEffect(() => {
     const token = localStorage.getItem("token")
     if (!token) {
@@ -107,7 +122,16 @@ export default function WorkspacePage() {
       nameInputRef.current.focus()
       nameInputRef.current.select()
     }
-  }, [editingName])
+  }, [editingName]);
+
+  useEffect(() => {
+  function handleMove(e: MouseEvent) {
+    sendCursorMove(e.clientX, e.clientY)
+  }
+
+  window.addEventListener("mousemove", handleMove)
+  return () => window.removeEventListener("mousemove", handleMove)
+}, [sendCursorMove]);
 
   async function addBlock() {
     const token = localStorage.getItem("token")
@@ -192,6 +216,24 @@ export default function WorkspacePage() {
     setBlocks(prev => prev.filter(b => b.id !== id))
   }
 
+  const colorMap = useRef<Record<string, string>>({})
+
+  function getColor(id: string) {
+    if (!colorMap.current[id]) {
+      const colors = [
+        "#ef4444",
+        "#3b82f6",
+        "#10b981",
+        "#f59e0b",
+        "#8b5cf6",
+        "#ec4899",
+      ]
+      colorMap.current[id] =
+        colors[Math.floor(Math.random() * colors.length)]
+    }
+    return colorMap.current[id]
+  }
+
   if (loading) return null
 
   return (
@@ -221,7 +263,7 @@ export default function WorkspacePage() {
               {workspaceName}
             </h1>
           )}
-
+           <OnlineUsers users={onlineUsers} />
           <button
             onClick={addBlock}
             className="rounded-full px-4 py-1.5 text-sm bg-purple-100 text-purple-700 hover:bg-purple-200 transition"
@@ -240,7 +282,24 @@ export default function WorkspacePage() {
             />
           ))}
         </div>
-
+        {Object.entries(cursors).map(([id, pos]) => (
+          <div
+            key={id}
+            className="fixed w-3 h-3 rounded-full pointer-events-none transition-transform duration-75"
+            style={{
+              left: pos.x,
+              top: pos.y,
+              backgroundColor: getColor(id),
+              transform: "translate(-50%, -50%)",
+              zIndex: 9999,
+            }}
+          />
+        ))}
+        {toast && (
+          <div className="fixed bottom-6 right-6 bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-lg animate-fade-in">
+            {toast}
+          </div>
+        )}
       </div>
     </div>
   )
