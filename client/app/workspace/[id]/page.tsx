@@ -52,11 +52,11 @@ export default function WorkspacePage() {
       setBlocks(prev => prev.filter(b => b.id !== lastEvent.blockId))
     }
     if (lastEvent.type === "USER_JOINED") {
-      setToast(`${lastEvent.userId} joined`)
+      setToast(`${lastEvent.name} joined`)
     }
 
     if (lastEvent.type === "USER_LEFT") {
-      setToast(`${lastEvent.userId} left`)
+      setToast(`${lastEvent.name} left`)
     }
     if (lastEvent.type === "USER_JOINED" || lastEvent.type === "USER_LEFT") {
       setTimeout(() => {

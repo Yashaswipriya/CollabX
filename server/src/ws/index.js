@@ -55,7 +55,7 @@ wss.on('connection',(ws) =>{
             return;
         }
         if(data.type === "JOIN_ROOM"){
-            const {roomId,userId} = data;
+            const {name,roomId,userId} = data;
             console.log(` User ${userId} joined room ${roomId} on this server`);
             if(!rooms.has(roomId)){
                 rooms.set(roomId, new Set());
@@ -82,7 +82,8 @@ wss.on('connection',(ws) =>{
         presence.get(roomId).add(userId);
         ws.roomId = roomId;
         ws.userId = userId;
-        const payload = {type:"USER_JOINED",userId,senderId:userId,originServerId:SERVER_ID};
+        ws.name = name;
+        const payload = {type:"USER_JOINED",userId,name,senderId:userId,originServerId:SERVER_ID};
         broadcastToRoom(roomId, payload, ws);
         pub.publish(`room:${roomId}`, JSON.stringify(payload));
         return;
@@ -104,7 +105,7 @@ wss.on('connection',(ws) =>{
     });
     ws.on('close', ()=>{
     console.log('Client disconnected');
-    const {roomId,userId} = ws;
+    const {roomId,userId,name} = ws;
     if(!roomId) return;
     const clients = rooms.get(roomId);
     if(!clients) return;
@@ -117,7 +118,7 @@ wss.on('connection',(ws) =>{
     if(onlineUsers && userId && onlineUsers.has(userId)){
         onlineUsers.delete(userId);
     }
-    const payload = {type:"USER_LEFT",userId,senderId:userId,originServerId:SERVER_ID};
+    const payload = {type:"USER_LEFT",userId,name,senderId:userId,originServerId:SERVER_ID};
     broadcastToRoom(roomId, payload, ws);
     pub.publish(`room:${roomId}`, JSON.stringify(payload));
     if(onlineUsers && onlineUsers.size === 0){

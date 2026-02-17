@@ -35,12 +35,14 @@ export default function Home() {
       })
 
       const data = await res.json()
-
+      console.log("LOGIN RESPONSE:", data)
       if (!res.ok) {
         throw new Error(data.message)
       }
 
       localStorage.setItem("token", data.token)
+      localStorage.setItem("username", data.name)
+      console.log("Stored username:", localStorage.getItem("username"))
       setIsLoginOpen(false)
       toast.success("Logged in successfully!")
       router.push("/dashboard")

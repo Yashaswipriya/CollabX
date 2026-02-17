@@ -29,7 +29,7 @@ router.post("/signup", async (req,res) =>{
 router.post("/login", async (req,res) =>{
     try{
         const {email,password} = req.body;
-        const user = await pool.query("SELECT id, password_hash FROM users WHERE email = $1",[email]);
+        const user = await pool.query("SELECT id, name, password_hash FROM users WHERE email = $1",[email]);
         if(user.rows.length === 0){
             return res.status(400).json({message:"Invalid credentials"});
         }
@@ -43,7 +43,7 @@ router.post("/login", async (req,res) =>{
         process.env.JWT_SECRET,
         { expiresIn: "1h" }
         );
-        res.json({ token });
+        res.json({ token, name:userDetails.name });
     }
     //Here user is an object which contains the user details in an array called rows.
     //so user details are accessed using user.rows[0] where 0 is the index of the first user in the array.

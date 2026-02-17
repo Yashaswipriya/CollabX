@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Block } from "../types/block";
+import { UNSTABLE_REVALIDATE_RENAME_ERROR } from "next/dist/lib/constants";
 
 export type WSEvent =
   | { type: "BLOCK_UPDATED"; block: Block }
   | { type: "BLOCK_CREATED"; block: Block }
   | { type: "BLOCK_DELETED"; blockId: number }
-  | { type: "USER_JOINED"; userId: string }
-  | { type: "USER_LEFT"; userId: string }
+  | { type: "USER_JOINED"; userId: string; name: string }
+  | { type: "USER_LEFT"; userId: string; name: string }
   | { type: "CURSOR_MOVE"; x: number; y: number; senderId: string };
 
 export function useCollabSocket(workspaceId: string, userId: string) {
@@ -43,6 +44,10 @@ export function useCollabSocket(workspaceId: string, userId: string) {
     if (!workspaceId || !userId) return;
 
     const socket = new WebSocket("ws://localhost:5000");
+     const username =
+      typeof window !== "undefined"
+        ? localStorage.getItem("username")
+        : null;
 
     socket.onopen = () => {
       console.log("WebSocket connected");
@@ -52,6 +57,7 @@ export function useCollabSocket(workspaceId: string, userId: string) {
           type: "JOIN_ROOM",
           roomId: String(workspaceId),
           userId,
+          name: username,
         })
       );
     };
