@@ -1,6 +1,8 @@
 const express = require('express');
 const pool = require('../db');
 const authMiddleware = require('../middleware/auth');
+const { emitToRoom } = require("../src/ws/index");
+
 const router = express.Router();
 
 router.post("/block", authMiddleware, async (req,res) =>{
@@ -14,6 +16,13 @@ router.post("/block", authMiddleware, async (req,res) =>{
             return res.status(409).json({message: "Block already exists at this position"});
         }
         const newBlock = await pool.query("INSERT INTO blocks (workspace_id, type, content, position) VALUES ($1, $2, $3, $4) RETURNING *", [workspace_id, type, content ?? {}, position]);
+        const payload = {
+        type: "BLOCK_CREATED",
+        block: newBlock.rows[0],
+        senderId: req.user.id,
+        originServerId: "REST_API"
+        };
+        emitToRoom(workspace_id, payload);
         res.json(newBlock.rows[0]);
     } catch(err){
         console.error(err.message);
@@ -40,7 +49,17 @@ router.put("/block/:id", authMiddleware, async (req,res) =>{
             return res.status(400).json({ message: "Invalid position" });
         }
         const updatedBlock = await pool.query("UPDATE blocks SET type = $1, content = $2, position = $3, version = version+1 WHERE id = $4 RETURNING *", [type ?? block.type, content ?? block.content, position ?? block.position, id]);
+        const updated = updatedBlock.rows[0];
+        const payload = {
+        type: "BLOCK_UPDATED",
+        block: updated,
+        senderId: req.user.id,
+        originServerId: "REST_API"
+        };
+        emitToRoom(updated.workspace_id, payload);
+
         res.json(updatedBlock.rows[0]);
+        
     }
     //Mistake: Violation of UNIQUE constraint on position within the same workspace is not handled.
     catch(err){
@@ -51,6 +70,51 @@ router.put("/block/:id", authMiddleware, async (req,res) =>{
         console.error(err.message);
         res.status(500).json({message: "Server error"});
     }
+});
+
+router.delete("/block/:id", authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Check if block exists
+    const blockRes = await pool.query(
+      "SELECT workspace_id FROM blocks WHERE id = $1",
+      [id]
+    );
+
+    if (blockRes.rows.length === 0) {
+      return res.status(404).json({ message: "Block not found" });
+    }
+
+    const workspaceId = blockRes.rows[0].workspace_id;
+
+    // Check membership
+    const membership = await pool.query(
+      "SELECT * FROM workspace_members WHERE workspace_id = $1 AND user_id = $2",
+      [workspaceId, userId]
+    );
+
+    if (membership.rows.length === 0) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    await pool.query("DELETE FROM blocks WHERE id = $1", [id]);
+    const payload = {
+    type: "BLOCK_DELETED",
+    blockId: id,
+    senderId: req.user.id,
+    originServerId: "REST_API"
+    };
+
+    emitToRoom(workspaceId, payload);
+
+    res.json({ message: "Block deleted successfully" });
+
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
 router.get("/block/:workspace_id", authMiddleware, async (req,res) =>{

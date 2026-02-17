@@ -4,11 +4,26 @@ const { randomUUID } = require('crypto');
 let pub, sub;
 
 const SERVER_ID = randomUUID();
+let broadcastToRoomGlobal;
+let pubGlobal;
+function emitToRoom(roomId, payload) {
+  console.log("Emitting to room:", roomId, payload.type);
 
+  if (broadcastToRoomGlobal) {
+    broadcastToRoomGlobal(roomId, payload);
+  }
+
+  if (pubGlobal) {
+    pubGlobal.publish(`room:${roomId}`, JSON.stringify(payload));
+  }
+}
 async function initWebSocket(server) {
   const redis = await initRedis();
   pub = redis.pub;
   sub = redis.sub;
+
+  pubGlobal = pub;
+
 const wss = new WebSocket.Server({ server });
 console.log('WebSocket server initialized');
 console.log(`Server ID: ${SERVER_ID}`);
@@ -25,6 +40,7 @@ function broadcastToRoom(roomId,data,sender){
         }
     })
 }
+broadcastToRoomGlobal = broadcastToRoom;
 
 wss.on('connection',(ws) =>{
     console.log('New client connected');
@@ -53,9 +69,7 @@ wss.on('connection',(ws) =>{
 
                 clients.forEach((client) => {
                     if (
-                    client.readyState === WebSocket.OPEN &&
-                    client.userId !== data.senderId
-                    ) {
+                    client.readyState === WebSocket.OPEN) {
                     client.send(JSON.stringify(data));
                     }
                 });
@@ -78,6 +92,8 @@ wss.on('connection',(ws) =>{
             const payload = {type:"BLOCK_UPDATED",block:data.block,senderId:ws.userId,originServerId:SERVER_ID};
             broadcastToRoom(ws.roomId, payload, ws);
             pub.publish(`room:${ws.roomId}`, JSON.stringify(payload));
+           console.log("BLOCK_UPDATED received from:", ws.userId);
+           console.log("ws.roomId is:", ws.roomId);
         }
         if(data.type === "CURSOR_MOVE"){
         if(!ws.roomId) return;
@@ -110,4 +126,7 @@ wss.on('connection',(ws) =>{
     });
 });
 }
-module.exports = initWebSocket;
+module.exports = {
+  initWebSocket,
+  emitToRoom
+};
