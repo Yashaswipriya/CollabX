@@ -40,6 +40,22 @@ export function useCollabSocket(workspaceId: string, userId: string) {
     );
   };
 
+  const emitBlockUpdate = () => {
+  if (socketRef.current?.readyState !== WebSocket.OPEN) return;
+
+  socketRef.current.send(
+    JSON.stringify({
+      type: "BLOCK_UPDATED",
+      block: {
+        id: Date.now(),
+        position: 0,
+        version: 1,
+        content: { type: "text", text: "Test update" },
+      },
+    })
+  );
+};
+
   useEffect(() => {
     if (!workspaceId || !userId) return;
 
@@ -131,6 +147,6 @@ export function useCollabSocket(workspaceId: string, userId: string) {
     };
   }, [workspaceId, userId]);
 
-  return { events, onlineUsers, cursors, sendCursorMove };
+  return { events, onlineUsers, cursors, sendCursorMove, emitBlockUpdate };
 }
 
