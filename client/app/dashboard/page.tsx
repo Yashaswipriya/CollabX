@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import CreateWorkspaceModal from "../components/CreateWorkspaceModal"
+import { API_BASE } from "@/lib/config";
 
 type Workspace = {
   id: number
@@ -25,7 +26,7 @@ export default function Dashboard() {
     async function fetchWorkspaces() {
       try {
         const res = await fetch(
-          "http://localhost:5000/api/workspace/workspaces",
+          `${API_BASE}/api/workspace/workspaces`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

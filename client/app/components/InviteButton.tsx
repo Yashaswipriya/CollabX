@@ -1,6 +1,6 @@
 "use client";
-
 import toast from "react-hot-toast";
+import { API_BASE } from "@/lib/config";
 
 interface Props {
   workspaceId: string;
@@ -12,7 +12,7 @@ export default function InviteButton({ workspaceId }: Props) {
 
     try {
       const res = await fetch(
-        `http://localhost:5000/api/workspace/${workspaceId}/invite`,
+        `${API_BASE}/api/workspace/${workspaceId}/invite`,
         {
           method: "POST",
           headers: {

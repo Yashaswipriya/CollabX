@@ -3,6 +3,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import toast from "react-hot-toast"
+import { API_BASE } from "@/lib/config";
 
 export default function Home() {
   const router = useRouter()
@@ -19,7 +20,7 @@ export default function Home() {
   const [signupEmail, setSignupEmail] = useState("")
   const [signupPassword, setSignupPassword] = useState("")
 
-  const BASE_URL = "http://localhost:5000/api/auth"
+  const BASE_URL = `${API_BASE}/api/auth`;
 
   async function handleLogin() {
     try {

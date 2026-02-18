@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { API_BASE } from "@/lib/config";
 
 export default function InvitePage() {
   const router = useRouter();
@@ -20,7 +21,7 @@ export default function InvitePage() {
 
       try {
         const res = await fetch(
-          `http://localhost:5000/api/invite/${token}/accept`,
+          `${API_BASE}/api/invite/${token}/accept`,
           {
             method: "POST",
             headers: {

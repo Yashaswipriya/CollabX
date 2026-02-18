@@ -1,6 +1,7 @@
 "use client"
 import { useState } from "react"
 import toast from "react-hot-toast"
+import { API_BASE } from "@/lib/config";
 
 type Props = {
   open: boolean
@@ -34,7 +35,7 @@ export default function CreateWorkspaceModal({
       setLoading(true)
 
       const res = await fetch(
-        "http://localhost:5000/api/workspace/workspace",
+        `${API_BASE}/api/workspace/workspace`,
         {
           method: "POST",
           headers: {

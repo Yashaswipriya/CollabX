@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Block } from "../types/block";
+import { WS_BASE } from "@/lib/config";
 
 export type WSEvent =
   | { type: "BLOCK_UPDATED"; block: Block }
@@ -42,7 +43,7 @@ export function useCollabSocket(workspaceId: string, userId: string) {
   useEffect(() => {
     if (!workspaceId || !userId) return;
 
-    const socket = new WebSocket("ws://localhost:5000");
+    const socket = new WebSocket(`${WS_BASE}`);
      const username =
       typeof window !== "undefined"
         ? localStorage.getItem("username")

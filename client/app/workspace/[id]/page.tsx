@@ -6,6 +6,7 @@ import BlockRenderer from "../../components/BlockRenderer"
 import WorkspaceHeader from "../../components/WorkspaceHeader"
 import { useCollabSocket } from "../../hooks/useCollabSocket"
 import { Block } from "../../types/block"
+import { API_BASE } from "@/lib/config";
 
 export default function WorkspacePage() {
   const router = useRouter()
@@ -78,7 +79,7 @@ export default function WorkspacePage() {
     async function init() {
       try {
         const wsRes = await fetch(
-          `http://localhost:5000/api/workspace/workspace/${workspaceId}`,
+          `${API_BASE}/api/workspace/workspace/${workspaceId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         )
 
@@ -91,7 +92,7 @@ export default function WorkspacePage() {
         setWorkspaceName(wsData.name)
 
         const blockRes = await fetch(
-          `http://localhost:5000/api/block/${workspaceId}`,
+          `${API_BASE}/api/block/${workspaceId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         )
 
@@ -144,7 +145,7 @@ export default function WorkspacePage() {
       position: blocks.length
     }
 
-    const res = await fetch("http://localhost:5000/api/block", {
+    const res = await fetch(`${API_BASE}/api/block`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -170,7 +171,7 @@ export default function WorkspacePage() {
     const token = localStorage.getItem("token")
 
     const res = await fetch(
-      `http://localhost:5000/api/block/${updatedBlock.id}`,
+      `${API_BASE}/api/block/${updatedBlock.id}`,
       {
         method: "PUT",
         headers: {
@@ -204,7 +205,7 @@ export default function WorkspacePage() {
   async function deleteBlock(id: number) {
     const token = localStorage.getItem("token")
 
-    await fetch(`http://localhost:5000/api/block/${id}`, {
+    await fetch(`${API_BASE}/api/block/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` }
     })
