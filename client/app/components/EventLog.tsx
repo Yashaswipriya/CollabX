@@ -1,8 +1,8 @@
 "use client";
-import { WSevent } from "../hooks/useCollabSocket";
+import { WSEvent } from "../hooks/useCollabSocket";
 
 type Props = {
-  events: WSevent[];
+  events: WSEvent[];
 };
 
 export default function EventLog({ events }: Props) {
