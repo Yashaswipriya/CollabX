@@ -6,8 +6,8 @@ async function initRedis() {
 
   const { createClient } = await import('redis');
 
-  pub = createClient({ url: 'redis://localhost:6379' });
-  sub = createClient({ url: 'redis://localhost:6379' });
+  pub = createClient({ url: process.env.REDIS_URL });
+  sub = createClient({ url: process.env.REDIS_URL });
 
   pub.on('connect', () => {
     console.log('Redis publisher connected');
