@@ -18,11 +18,18 @@ export default function WorkspacePage() {
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState<string | null>(null)
 
-  const [userId] = useState(() =>
-    typeof window !== "undefined"
-      ? localStorage.getItem("userId") || crypto.randomUUID()
-      : ""
-  )
+  const [userId] = useState(() =>{
+    if (typeof window === "undefined") return ""
+
+  let id = localStorage.getItem("userId")
+
+  if (!id) {
+    id = crypto.randomUUID()
+    localStorage.setItem("userId", id)
+  }
+
+  return id
+  })
 
   // WebSocket hook
   const { events, onlineUsers, cursors, sendCursorMove } =
