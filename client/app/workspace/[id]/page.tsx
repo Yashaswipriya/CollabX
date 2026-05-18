@@ -153,18 +153,6 @@ export default function WorkspacePage() {
       },
       body: JSON.stringify(newBlockPayload)
     })
-
-    const data = await res.json()
-
-    const normalized: Block = {
-      ...data,
-      content:
-        typeof data.content === "string"
-          ? JSON.parse(data.content)
-          : data.content
-    }
-
-    setBlocks(prev => [...prev, normalized])
   }
 
   async function updateBlock(updatedBlock: Block) {
