@@ -16,45 +16,53 @@ export default function Dashboard() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
 
   useEffect(() => {
+  async function fetchWorkspaces() {
     const token = localStorage.getItem("token")
 
     if (!token) {
+      setWorkspaces([])
       router.push("/")
       return
     }
 
-    async function fetchWorkspaces() {
-      try {
-        const res = await fetch(
-          `${API_BASE}/api/workspace/workspaces`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        )
+    try {
+      setLoading(true)
 
-        const data = await res.json()
-        if (!Array.isArray(data)) {
+      const res = await fetch(
+        `${API_BASE}/api/workspace/workspaces`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+        }
+      )
+
+      const data = await res.json()
+
+      if (!Array.isArray(data)) {
         console.error("Unexpected response:", data)
         setWorkspaces([])
-        } else {
+      } else {
         setWorkspaces(data)
-        }
-      } catch (err) {
-        console.error(err)
-      } finally {
-        setLoading(false)
       }
+    } catch (err) {
+      console.error(err)
+      setWorkspaces([])
+    } finally {
+      setLoading(false)
     }
+  }
 
-    fetchWorkspaces()
-  }, [router])
+  fetchWorkspaces()
+}, [])
 
   function handleLogout() {
-    localStorage.removeItem("token")
-    router.push("/")
-  }
+  localStorage.removeItem("token")
+  localStorage.removeItem("username")
+  setWorkspaces([])
+  router.replace("/")
+}
 
   return (
     <div className="flex min-h-screen bg-gradient-to-b from-white via-[#faf9ff] to-white">
