@@ -12,7 +12,7 @@ CREATE TABLE workspaces (
   name TEXT NOT NULL,
   owner_id UUID REFERENCES users(id) ON DELETE CASCADE,
   created_at TIMESTAMP DEFAULT NOW(),
-  password_hash TEXT NOT NULL,
+  password_hash TEXT NOT NULL
 );
 
 --workspace_members table schema--
