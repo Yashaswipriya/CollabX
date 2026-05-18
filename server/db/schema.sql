@@ -11,8 +11,7 @@ CREATE TABLE workspaces (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   owner_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  created_at TIMESTAMP DEFAULT NOW(),
-  password_hash TEXT NOT NULL
+  created_at TIMESTAMP DEFAULT NOW()
 );
 
 --workspace_members table schema--
