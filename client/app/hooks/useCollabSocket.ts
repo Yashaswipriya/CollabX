@@ -58,8 +58,8 @@ export function useCollabSocket(workspaceId: string, userId: string) {
 
   useEffect(() => {
     if (!workspaceId || !userId) return;
-    if (socketRef.current) {
-      socketRef.current.close()
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      return;
     }
     const socket = new WebSocket(`${WS_BASE}`);
      const username =
@@ -146,6 +146,7 @@ export function useCollabSocket(workspaceId: string, userId: string) {
 
     return () => {
       socket.close();
+      socketRef.current = null;
     };
   }, [workspaceId, userId]);
 

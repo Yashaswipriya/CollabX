@@ -43,7 +43,10 @@ export default function WorkspacePage() {
     }
 
     if (lastEvent.type === "BLOCK_CREATED") {
-      setBlocks(prev => [...prev, lastEvent.block])
+      setBlocks(prev => {
+        if (prev.some(b => b.id === lastEvent.block.id)) return prev
+          return [...prev, lastEvent.block]
+        })
     }
 
     if (lastEvent.type === "BLOCK_DELETED") {
